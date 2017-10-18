@@ -1,4 +1,4 @@
-﻿using System.Threading;
+﻿using System.Timers;
 using Android.App;
 using Android.Widget;
 using Android.OS;
@@ -58,33 +58,44 @@ namespace KitchenTimer
             btnstart.Click += (sender, e) =>
             {
                 this._isCountDown = !this._isCountDown;
-                this._lastTime = DateTime.Now;
-                if (this._isCountDown) { btnstart.Text = "ストップ"; }
-                else { btnstart.Text = "スタート"; }
+                if (this._isCountDown)
+                {
+                    // 開始時刻を設定してタイマースタート
+                    this._lastTime = DateTime.Now;
+                    this._timer.Start();
+                    btnstart.Text = "ストップ";
+                }
+                else
+                {
+                    // タイマーを停止してボタンのテキストを戻す
+                    this._timer.Stop();
+                    btnstart.Text = "スタート";
+                }
             };
 
-            this._lastTime = DateTime.Now;
-            this._timer = new Timer(Timer_OnTick, null, 0, 100);
+            // タイマー設定
+            // 100ms間隔で残り時間をチェック
+            this._timer = new Timer();
+            this._timer.Interval = 100;
+            this._timer.Elapsed += OnElapsed;
         }
 
-        private void Timer_OnTick(object state)
+        private void OnElapsed(object sender, ElapsedEventArgs e)
         {
-            if (!this._isCountDown) { return; }
-
             RunOnUiThread(() =>
             {
-                var span = DateTime.Now - this._lastTime;
-                this._remainingMilliSec -= (int)span.TotalMilliseconds;
-                if(this._remainingMilliSec <= 0)
+                this._remainingMilliSec -= (int)(DateTime.Now - this._lastTime).TotalMilliseconds;
+                if (this._remainingMilliSec <= 0)
                 {
-                    this._isCountDown = false;
-                    this._remainingMilliSec = 0;
-                    FindViewById<Button>(Resource.Id.StartButton).Text = "スタート";
-                    // アラームを鳴らす代わりにメッセージ
+                    this._timer.Stop();
+                    // アラームの代わりにメッセージ表示
                     var alert = new AlertDialog.Builder(this);
-                    alert.SetTitle("End");
+                    alert.SetTitle("タイマー");
                     alert.SetMessage("終わったよ");
                     alert.Show();
+
+                    FindViewById<Button>(Resource.Id.StartButton).Text = "スタート";
+                    this._remainingMilliSec = 0;
                 }
                 this._lastTime = DateTime.Now;
                 ShowRemainingTime();
